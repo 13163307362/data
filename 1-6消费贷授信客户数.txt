@@ -1,0 +1,201 @@
+截止2018-11-30：
+1、消费贷授信客户数
+select count(1)
+from
+(select ids_no, min(active_success_time) as open_time
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by ids_no) t
+
+查询结果
+1030921
+
+2、消费贷用信客户数
+select count(1)
+from 
+(select cust_ids, min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30'
+group by cust_ids) t
+
+查询结果
+152729
+
+3、老客：授信且使用
+方式1
+with t1 as
+(select ids_no, min(active_success_time) as open_time
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by ids_no),
+t2 as
+(select cust_ids, min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30'
+group by cust_ids)
+
+select count(1)
+from(
+select t2.cust_ids
+from t2
+left join t1
+on t1.ids_no=t2.cust_ids)
+
+查询结果152729
+
+方式2（授信且使用<=>用信）
+select count(1)
+from(
+select distinct cust_ids
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30')
+
+查询结果152729
+
+     新客：授信未使用
+with t1 as
+(select ids_no, min(active_success_time) as open_time
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by ids_no),
+t2 as
+(select cust_ids, min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30'
+group by cust_ids
+) 
+
+select count(1)
+from(
+select t1.ids_no, t2.cust_ids 
+from t1
+left  join t2
+on t1.ids_no=t2.cust_ids
+where t2.cust_ids is  null)
+
+查询结果878696
+
+4、开通渠道分布
+
+(对credit_type计数)
+select credit_type, count(credit_type) as type_num
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by credit_type
+
+查询结果
+：04，17279；03，1018；02，707051；01，305571；05，2
+
+5、用信距开通的时长分布
+with t1 as
+(select ids_no, min(active_success_time) as credit_open_time
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by ids_no),
+t2 as
+(select cust_ids, min(loan_time) as loan_begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30'
+group by cust_ids
+),
+t3 as
+(select t1.ids_no as ids_no
+        ,if(t2.cust_ids is not null,1,0) as is_used_user
+        ,datediff(t2.loan_begin_time,t1.credit_open_time) as dtf
+ from t1
+ left join t2
+ on t1.ids_no=t2.cust_ids)
+select  dtf, count(t4.ids_no) as cnt
+from(select ids_no, case when dtf<=7 then '<7'
+               when 7<dtf and t3.dtf<=15 then '7-15'
+               when 15<dtf and t3.dtf<=30 then '16-30'
+               when 30<dtf and t3.dtf<=60 then '31-60'
+               when 60<dtf and t3.dtf<=90 then '61-90'        
+               when 90<dtf and t3.dtf<=180 then '91-180'
+               when 180<dtf and t3.dtf<=365 then '181-365'
+               when 365<dtf and t3.dtf<=370 then '366-370'
+               when 370<dtf and t3.dtf<=730 then '371-730'            
+               else '>730'
+               end as dtf
+from t3
+where is_used_user=1) t4
+group by t4.dtf
+
+
+6、开通距实名的时长分布
+with t1 as
+(select ids_no, min(active_success_time) as credit_open_time
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where sub_credit_id='02'
+and active_status='03'
+and to_date(active_success_time)<='2018-11-30'
+group by ids_no),
+t2 as
+(select id_card, min(auth_date) as auth_date_time
+from fdm_dpa.mls_member_info_all
+where auth_date<='2018-11-30' 
+group by id_card),
+t3 as
+(select t1.ids_no as ids_no
+        ,if(t2.id_card is not null,1,0) as is_auth_user
+        ,datediff(t1.credit_open_time,t2.auth_date_time) as dtf
+ from t1
+ left join t2
+ on t1.ids_no=t2.id_card)
+select  dtf, count(t4.ids_no) as cnt
+from(select ids_no, case when dtf<=7 then '<7'
+               when 7<dtf and t3.dtf<=15 then '7-15'
+               when 15<dtf and t3.dtf<=30 then '16-30'
+               when 30<dtf and t3.dtf<=60 then '31-60'
+               when 60<dtf and t3.dtf<=90 then '61-90'        
+               when 90<dtf and t3.dtf<=180 then '91-180'
+               when 180<dtf and t3.dtf<=365 then '181-365'
+               when 365<dtf and t3.dtf<=370 then '366-370'
+               when 370<dtf and t3.dtf<=730 then '371-730'            
+               else '>730'
+               end as dtf
+from t3
+where is_auth_user=1) t4
+group by t4.dtf 
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+

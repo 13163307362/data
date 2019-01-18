@@ -1,0 +1,53 @@
+#查询每天的用信人数（partner_no=10表示 易付宝app）
+select  to_date(begin_time), count(cust_ids) as cnt
+from(select cust_ids, min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no='10'
+and quota_type='02'
+and to_date(loan_time)<='2018-11-30'
+group by cust_ids)
+group by  to_date(begin_time)
+order by to_date(begin_time)
+
+#查询每天中首次用信人数（每日用信人数分布），并新建为t1表
+with t1 as
+（select to_date(begin_time) as begin_date, count(cust_ids) as ids_num
+from (select cust_ids,min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no=10
+and to_date(loan_time)<'2018-11-30'
+group by cust_ids) 
+group by to_date(begin_time)
+order by to_date(begin_time)）
+
+#查询每周中首次用信人数（周 用信人数分布）
+ with t1 as
+(select to_date(begin_time) as begin_date, count(cust_ids) as ids_num
+from (select cust_ids,min(loan_time) as begin_time
+from fdm_sor.sor_evt_tb_loan_main
+where status>999
+and partner_no=10
+and to_date(loan_time)<'2018-11-30'
+and to_date(loan_time)>="2018-01-01"
+group by cust_ids) 
+group by to_date(begin_time)
+order by to_date(begin_time))
+
+select weekofyear(t1.begin_date),count(ids_num) as week_num
+from t1
+group by weekofyear(t1.begin_date) 
+order by weekofyear(t1.begin_date) 
+#查询节假日与非节假日首次用信人数（节假日 用信人数分布）
+select count(num) as holiday_num, holiday
+from t3
+group by holiday
+
+ 
+
+
+
+
+
+

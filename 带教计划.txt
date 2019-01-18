@@ -1,0 +1,8 @@
+带教计划：
+熟悉2019年部门业务规划，进行新算法的学习探索。在精准营销方面，学习相关业务线的业务分析思维，学习精准营销模型建设思路。实习期间产出两份学习报告：一份为在校期间营销模型算法学习，一份为实习报告。并按照带教人要求完成相关工作辅助。lightgbm-2.0.3-py2.py3-none-win_amd64.whl
+
+F:\\ProgramData\\Anaconda3\\Scripts
+
+lightgbm的安装：https://blog.csdn.net/Allenlzcoder/article/details/80201464
+https://www.cnblogs.com/mmzs/p/8359085.html
+

@@ -1,0 +1,24 @@
+create table aaaa as
+with t1 as
+(select ids_no, 0 as target 
+ from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer
+where credit_type='01'
+and active_status='01'
+and to_date(create_time)<='2018-09-30'
+group by ids_no),t2 as
+(select a.ids_no, 1 as target
+ from(select *,row_number() over(partition by ids_no order by active_success_time) as row_num
+from fdm_sor.sor_plplms_qt_pre_sub_credit_quota_customer) a
+ where a.credit_type='01'
+ and a.active_status='03'
+ and a.row_num=1
+ and to_date(a.create_time)<='2018-09-30'
+ and to_date(a.active_success_time)>='2018-10-01'
+ and to_date(a.active_success_time)<='2018-10-31'
+)
+select t1.ids_no,t1.target
+from t1
+union all
+select t2.ids_no,t2.target
+from t2
+union all
